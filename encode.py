@@ -1,3 +1,5 @@
+import sys
+
 TABLE = {
     # Opcodes
     'NOP':      0x0,
@@ -51,7 +53,7 @@ TABLE = {
 
 def encode(s):
     s = s.upper().replace(',', '').split(' ')
-    nibbles = [TABLE[c] for c in s]
+    nibbles = [TABLE[t] for t in s]
 
     shift = 3
     word = 0
@@ -60,3 +62,22 @@ def encode(s):
         shift -= 1
 
     return word
+
+
+def parse_file(p):
+    wool = []
+    with open(p) as f:
+        for line in f:
+            wool.append(encode(line.rstrip()))
+    return wool
+
+
+def write(p, wool):
+    with open(p, 'w') as f:
+        for line in wool:
+            f.write('0x%04x\n' % line)
+
+
+if __name__ == '__main__':
+    wool = parse_file(sys.argv[1])
+    write(sys.argv[2], wool)
