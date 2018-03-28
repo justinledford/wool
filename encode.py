@@ -1,6 +1,8 @@
 import sys
 
-TABLE = {
+from PIL import Image, ImageFont, ImageDraw
+
+NIBBLE_TABLE = {
     # Opcodes
     'NOP':      0x0,
     'LW':       0x1,
@@ -51,9 +53,29 @@ TABLE = {
     '15':      0xF
 }
 
+
+COLOR_TABLE = {
+        0x0: '#E9ECEC',
+        0x1: '#F07613',
+        0x2: '#BD44B3',
+        0x3: '#3AAFD9',
+        0x4: '#F8C627',
+        0x5: '#70B919',
+        0x6: '#ED8DAC',
+        0x7: '#3E4447',
+        0x8: '#8E8E86',
+        0x9: '#158991',
+        0xA: '#792AAC',
+        0xB: '#35399D',
+        0xC: '#724728',
+        0xD: '#546D1B',
+        0xE: '#A12722',
+        0xF: '#141519'
+}
+
 def encode(s):
     s = s.upper().replace(',', '').split(' ')
-    nibbles = [TABLE[t] for t in s]
+    nibbles = [NIBBLE_TABLE[t] for t in s]
 
     shift = 3
     word = 0
@@ -66,18 +88,57 @@ def encode(s):
 
 def parse_file(p):
     wool = []
+    instructions = []
     with open(p) as f:
         for line in f:
             wool.append(encode(line.rstrip()))
-    return wool
+            instructions.append(line.rstrip())
+    return wool, instructions
 
 
 def write(p, wool):
     with open(p, 'w') as f:
-        for line in wool:
-            f.write('0x%04x\n' % line)
+        for word in wool:
+            f.write('0x%04x\n' % word)
 
+def draw(p, wool, instructions):
+    ROW_SIZE = 50
+    SPACE_SIZE = 10
+    COL_SIZE = 50
+
+    NUM_INSTRUCTIONS=len(wool)
+
+    img = Image.new('RGB', (500, ROW_SIZE*(NUM_INSTRUCTIONS+2)), 'white')
+
+    draw = ImageDraw.Draw(img)
+
+    for i, word in enumerate(wool, 1):
+        a = (word & 0xF000) >> 12
+        b = (word & 0x0F00) >> 8
+        c = (word & 0x00F0) >> 4
+        d = (word & 0x000F)
+
+        draw.rectangle(
+                ((COL_SIZE,   ROW_SIZE*i), (COL_SIZE+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                fill=COLOR_TABLE[a])
+        draw.rectangle(
+                ((COL_SIZE*2, ROW_SIZE*i), (COL_SIZE*2+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                fill=COLOR_TABLE[b])
+
+        draw.rectangle(
+                ((COL_SIZE*3, ROW_SIZE*i), (COL_SIZE*3+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                fill=COLOR_TABLE[c])
+
+        draw.rectangle(
+                ((COL_SIZE*4, ROW_SIZE*i), (COL_SIZE*4+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                fill=COLOR_TABLE[d])
+
+        draw.text((25, ROW_SIZE*i+20), str(i), fill='black')
+
+        draw.text((COL_SIZE*6, ROW_SIZE*i+20), instructions[i-1], fill='black')
+    img.save(p, 'JPEG', quality=95)
 
 if __name__ == '__main__':
-    wool = parse_file(sys.argv[1])
+    wool, instructions = parse_file(sys.argv[1])
     write(sys.argv[2], wool)
+    draw(sys.argv[3], wool, instructions)
