@@ -1,3 +1,4 @@
+from collections import deque, namedtuple
 import sys
 
 from PIL import Image, ImageFont, ImageDraw
@@ -78,6 +79,12 @@ COLOR_TABLE = {
         0xF: '#141519'
 }
 
+
+Instruction = namedtuple('Instruction',
+        ['instruction', 'reg_dest', 'reg_src_a', 'reg_src_b', 'immediate'])
+Instruction.__new__.__defaults__ = (None,) * len(Instruction._fields)
+
+
 def encode(s):
     s = s.upper().replace(',', '').split(' ')
     nibbles = [NIBBLE_TABLE[t] for t in s]
@@ -93,12 +100,89 @@ def encode(s):
 
 def parse_file(p):
     wool = []
-    instructions = []
+    lines = []
     with open(p) as f:
         for line in f:
             wool.append(encode(line.rstrip()))
-            instructions.append(line.rstrip())
-    return wool, instructions
+            lines.append(line.rstrip())
+    return wool, lines
+
+
+def init_instr(instr):
+    if instr[0] in ['ADD', 'AND', 'OR', 'XOR']:
+        return Instruction(instruction=instr[0],
+                           reg_dest=instr[1],
+                           reg_src_a=instr[2],
+                           reg_src_b=instr[3])
+
+    elif instr[0] == 'LW':
+        return Instruction(instruction=instr[0],
+                           reg_dest=instr[1],
+                           reg_src_a=instr[2],
+                           immediate=instr[3])
+
+    elif instr[0] == 'SW':
+        return Instruction(instruction=instr[0],
+                           reg_src_a=instr[1],
+                           reg_src_b=instr[2],
+                           immediate=instr[3])
+
+    elif instr[0] == 'SR':
+        return Instruction(instruction=instr[0],
+                           reg_dest=instr[1],
+                           reg_src_a=instr[2],
+                           immediate=instr[3])
+
+    elif instr[0] == 'MOV':
+        return Instruction(instruction=instr[0],
+                           reg_dest=instr[1],
+                           reg_src_a=instr[2])
+
+    elif instr[0] == 'MOVI':
+        return Instruction(instruction=instr[0],
+                           reg_dest=instr[1],
+                           immediate=instr[2])
+
+    elif instr[0] == 'NOOP':
+        return Instruction(instruction=instr[0])
+
+    raise Exception('Unknown instruction %s' % instr[0])
+
+
+def create_instructions(lines):
+    instructions = []
+    for line in lines:
+        instr = line.upper().replace(',', '').split(' ')
+        instructions.append(init_instr(instr))
+    return instructions
+
+def insert_stalls(instructions):
+
+    i = 0
+    while i < len(instructions):
+        instr = instructions[i]
+
+        if instr.instruction == 'NOOP':
+            i += 1
+            continue
+
+        reg_write = instr.reg_dest
+
+        # check next 4 instructions
+        for j in range(1, 5):
+            if i+j >= len(instructions):
+                break
+
+            if reg_write == instructions[i+j].reg_src_a or \
+               reg_write == instructions[i+j].reg_src_b:
+
+                for k in range(0, 5-j):
+                    instructions.insert(i+1+k, Instruction('NOOP'))
+                break
+
+        i += 1
+
+    return instructions
 
 
 def write(p, wool):
@@ -139,11 +223,15 @@ def draw(p, wool, instructions, row_size, col_size, space_size):
         draw.text((col_size*6, row_size*i+20), instructions[i-1], fill='black')
     img.save(p, 'JPEG', quality=95)
 
-if __name__ == '__main__':
-    if len(sys.argv) < 4:
-        print('Usage: encode.py instructions-path output-path visual-path')
-        exit(1)
 
-    wool, instructions = parse_file(sys.argv[1])
-    write(sys.argv[2], wool)
-    draw(sys.argv[3], wool, instructions, ROW_SIZE, COL_SIZE, SPACE_SIZE)
+if __name__ == '__main__':
+#    if len(sys.argv) < 4:
+#        print('Usage: encode.py instructions-path output-path visual-path')
+#        exit(1)
+
+    wool, lines = parse_file(sys.argv[1])
+    instructions = create_instructions(lines)
+    instructions = insert_stalls(instructions)
+
+#    write(sys.argv[2], wool)
+#    draw(sys.argv[3], wool, instructions, ROW_SIZE, COL_SIZE, SPACE_SIZE)
