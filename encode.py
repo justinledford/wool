@@ -19,7 +19,7 @@ NIBBLE_TABLE = {
     'SR':       0x7,
     'MOV':      0x8,
     'MOVI':     0x9,
-    'BNZ':      0xA,
+    'BNEQ':     0xA,
 
     # Registers
     'R0':       0x0,
