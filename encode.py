@@ -2,6 +2,11 @@ import sys
 
 from PIL import Image, ImageFont, ImageDraw
 
+ROW_SIZE = 50
+SPACE_SIZE = 10
+COL_SIZE = 50
+
+
 NIBBLE_TABLE = {
     # Opcodes
     'NOP':      0x0,
@@ -101,14 +106,10 @@ def write(p, wool):
         for word in wool:
             f.write('0x%04x\n' % word)
 
-def draw(p, wool, instructions):
-    ROW_SIZE = 50
-    SPACE_SIZE = 10
-    COL_SIZE = 50
+def draw(p, wool, instructions, row_size, col_size, space_size):
+    num_i=len(wool)
 
-    NUM_INSTRUCTIONS=len(wool)
-
-    img = Image.new('RGB', (500, ROW_SIZE*(NUM_INSTRUCTIONS+2)), 'white')
+    img = Image.new('RGB', (500, ROW_SIZE*(num_i+2)), 'white')
 
     draw = ImageDraw.Draw(img)
 
@@ -119,26 +120,30 @@ def draw(p, wool, instructions):
         d = (word & 0x000F)
 
         draw.rectangle(
-                ((COL_SIZE,   ROW_SIZE*i), (COL_SIZE+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                ((col_size,   row_size*i), (col_size+col_size, row_size*i+row_size)),
                 fill=COLOR_TABLE[a])
         draw.rectangle(
-                ((COL_SIZE*2, ROW_SIZE*i), (COL_SIZE*2+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                ((col_size*2, row_size*i), (col_size*2+col_size, row_size*i+row_size)),
                 fill=COLOR_TABLE[b])
 
         draw.rectangle(
-                ((COL_SIZE*3, ROW_SIZE*i), (COL_SIZE*3+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                ((col_size*3, row_size*i), (col_size*3+col_size, row_size*i+row_size)),
                 fill=COLOR_TABLE[c])
 
         draw.rectangle(
-                ((COL_SIZE*4, ROW_SIZE*i), (COL_SIZE*4+COL_SIZE, ROW_SIZE*i+ROW_SIZE)),
+                ((col_size*4, row_size*i), (col_size*4+col_size, row_size*i+row_size)),
                 fill=COLOR_TABLE[d])
 
-        draw.text((25, ROW_SIZE*i+20), str(i), fill='black')
+        draw.text((25, row_size*i+20), str(i), fill='black')
 
-        draw.text((COL_SIZE*6, ROW_SIZE*i+20), instructions[i-1], fill='black')
+        draw.text((col_size*6, row_size*i+20), instructions[i-1], fill='black')
     img.save(p, 'JPEG', quality=95)
 
 if __name__ == '__main__':
+    if len(sys.argv) < 4:
+        print('Usage: encode.py instructions-path output-path visual-path')
+        exit(1)
+
     wool, instructions = parse_file(sys.argv[1])
     write(sys.argv[2], wool)
-    draw(sys.argv[3], wool, instructions)
+    draw(sys.argv[3], wool, instructions, ROW_SIZE, COL_SIZE, SPACE_SIZE)
