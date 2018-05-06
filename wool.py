@@ -26,7 +26,7 @@ NIBBLE_TABLE = {
     'SR':       0x7,
     'MOV':      0x8,
     'MOVI':     0x9,
-    'BNEQ':     0xA,
+    'BNZ':     0xA,
 
     # Registers
     'R0':       0x0,
@@ -145,7 +145,7 @@ def init_instr(instr):
                            type=5, human_readable=' '.join(instr))
 
     # Type 6
-    elif instr[0] == 'BNEQ':
+    elif instr[0] == 'BNZ':
         return Instruction(instruction=instr[0],
                            reg_src_a=instr[1],
                            reg_src_b=instr[2],
@@ -205,7 +205,7 @@ def insert_stalls_branchs(instructions):
     i = 0
     while i < len(instructions):
         instr = instructions[i]
-        if instr.instruction == 'BNEQ':
+        if instr.instruction == 'BNZ':
             stalls = [Instruction('NOP', type=0, human_readable='NOP')
                       for _ in range(B_LATENCY)]
             instructions[i+1:i+1] = stalls
