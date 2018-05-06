@@ -7,6 +7,12 @@ ROW_SIZE = 50
 SPACE_SIZE = 10
 COL_SIZE = 50
 
+# Number of stalls inserted between an instruction and an
+# immediately depedent instruction
+RAW_LATENCY = 2
+
+# Number of stalls inserted after a branch
+B_LATENCY = 2
 
 NIBBLE_TABLE = {
     # Opcodes
@@ -157,30 +163,40 @@ def create_instructions(lines):
 
 
 def insert_stalls_hazards(instructions):
-    i = 0
-    while i < len(instructions):
+    """
+    Check for RAW hazards by scanning instructions
+    in reverse order, and if any reads are preceeded
+    by any writes of the same register in the last 3 instructions,
+    insert stalls to prevent RAW hazard.
+    """
+    i = len(instructions) - 1
+    while i > -1:
         instr = instructions[i]
 
         if instr.instruction == 'NOP':
-            i += 1
+            i -= 1
             continue
 
-        reg_write = instr.reg_dest
+        reg_reads = [instructions[i].reg_src_a, instructions[i].reg_src_b]
 
-        # check next 3 instructions
-        for j in range(1, 4):
-            if i+j >= len(instructions):
+        # check last LATENCY instructions
+        for j in range(1, RAW_LATENCY+1):
+            if i-j < 0:
                 break
 
-            if reg_write == instructions[i+j].reg_src_a or \
-               reg_write == instructions[i+j].reg_src_b:
+            reg_write = instructions[i-j].reg_dest
 
-                for k in range(0, 4-j):
-                    instructions.insert(i+1+k, Instruction('NOP', type=0,
-                        human_readable='NOP'))
+            if reg_write in reg_reads and reg_write != None:
+                print('found RAW hazard from %d to %d, register %s' % (
+                    i+1, i-j+1, reg_write))
+                num_stalls = RAW_LATENCY+1-j
+                print('inserting %d stalls' % num_stalls)
+                stalls = [Instruction('NOP', type=0, human_readable='NOP')
+                          for _ in range(num_stalls)]
+                instructions[i-j+1:i-j+1] = stalls
                 break
 
-        i += 1
+        i -= 1
 
     return instructions
 
@@ -190,9 +206,9 @@ def insert_stalls_branchs(instructions):
     while i < len(instructions):
         instr = instructions[i]
         if instr.instruction == 'BNEQ':
-            for j in range(0, 2):
-                instructions.insert(i+1+j, Instruction('NOP', type=0,
-                    human_readable='NOP'))
+            stalls = [Instruction('NOP', type=0, human_readable='NOP')
+                      for _ in range(B_LATENCY)]
+            instructions[i+1:i+1] = stalls
         i += 1
 
     return instructions
