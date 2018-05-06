@@ -88,8 +88,11 @@ COLOR_TABLE = {
 
 Instruction = namedtuple('Instruction',
         ['instruction', 'reg_dest', 'reg_src_a', 'reg_src_b', 'immediate',
-         'type', 'human_readable'])
+         'type', 'human_readable', 'stall'])
 Instruction.__new__.__defaults__ = (None,) * len(Instruction._fields)
+
+def Stall():
+    return Instruction('NOP', type=0, human_readable='NOP', stall=True)
 
 
 def parse_file(p):
@@ -191,8 +194,7 @@ def insert_stalls_hazards(instructions):
                     i+1, i-j+1, reg_write))
                 num_stalls = RAW_LATENCY+1-j
                 print('inserting %d stalls' % num_stalls)
-                stalls = [Instruction('NOP', type=0, human_readable='NOP')
-                          for _ in range(num_stalls)]
+                stalls = [Stall() for _ in range(num_stalls)]
                 instructions[i-j+1:i-j+1] = stalls
                 break
 
@@ -206,8 +208,7 @@ def insert_stalls_branchs(instructions):
     while i < len(instructions):
         instr = instructions[i]
         if instr.instruction == 'BNZ':
-            stalls = [Instruction('NOP', type=0, human_readable='NOP')
-                      for _ in range(B_LATENCY)]
+            stalls = [Stall() for _ in range(B_LATENCY)]
             instructions[i+1:i+1] = stalls
         i += 1
 
